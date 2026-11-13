@@ -1,0 +1,45 @@
+flowchart TB
+    subgraph CustomerOnPrem["محیط مشتری (On-Premises Windows)"]
+        ERP_DB[("SQL Server / فایل هلو یا سپیدار\n(Read-Only Local Access)")]
+        AGENT_EXE[".NET 8 Windows Service\n(Folder Watcher + Read-Only Extractor)"]
+        ERP_DB -->|"SELECT Only"| AGENT_EXE
+    end
+
+    subgraph CloudInfra["زیرساخت تولید (Iran / Self-Hosted Cloud K8s or Docker Swarm)"]
+        LB["Edge Load Balancer / WAF\n(Nginx + Let's Encrypt TLS 1.3)"]
+
+        subgraph WebNodes["Frontend & API Nodes (Stateless, Auto-scalable)"]
+            NEXT_POD["Next.js Web Pods (x2+)"]
+            NEST_POD["NestJS API Pods (x2+)"]
+        end
+
+        subgraph WorkerNodes["Async Worker & OCR Nodes"]
+            BULL_POD["NestJS BullMQ Workers (x2+)\n(Reports, Sync, Outbox, Exports)"]
+            OCR_POD["Python FastAPI OCR Pods (CPU/GPU)\n(PaddleOCR, OpenCV, Table Parse)"]
+        end
+
+        subgraph StatefulTier["Stateful & Data Persistence Tier"]
+            PGB["PgBouncer (Transaction Pool)"]
+            PG_PRIM[("PostgreSQL 16 Primary")]
+            PG_REP[("PostgreSQL Read Replica\n(Heavy Reports)")]
+            REDIS_HA[("Redis Sentinel / Cluster\n(BullMQ + Cache)")]
+            MINIO[("MinIO / S3 Cluster\n(SSE-KMS Encrypted Buckets)")]
+            BACKUP[("Encrypted Offsite Backups\n(WAL-G / pgBackRest)")]
+        end
+
+        subgraph Observability["مانیتورینگ و ممیزی عملیاتی"]
+            OBS["Prometheus + Grafana + Loki + OpenTelemetry\n(Zero PII in Logs)"]
+            VAULT["Secrets Manager / HashiCorp Vault"]
+        end
+    end
+
+    AGENT_EXE -->|"HTTPS Outbound (Port 443)"| LB
+    LB --> NEXT_POD & NEST_POD
+    NEST_POD --> PGB --> PG_PRIM
+    NEST_POD -->|"Read-Only Heavy Queries"| PG_REP
+    PG_PRIM -->|"Streaming Replication"| PG_REP
+    PG_PRIM -->|"Continuous WAL"| BACKUP
+    NEST_POD & BULL_POD & OCR_POD <--> REDIS_HA
+    NEST_POD & BULL_POD & OCR_POD <--> MINIO
+    NEST_POD & BULL_POD --> VAULT
+    NEST_POD & BULL_POD & OCR_POD --> OBS

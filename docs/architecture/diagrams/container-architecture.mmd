@@ -1,0 +1,38 @@
+flowchart TB
+    CLIENT["مرورگر وب و موبایل وب\n(Desktop / Mobile Browser)"]
+    WIN_AGENT[".NET Windows Agent\n(On-Premises Client Machine — Read-Only)"]
+
+    subgraph Edge["لایه لبه و امنیت شبکه"]
+        RP["Reverse Proxy / WAF / TLS\n(Nginx / Traefik — TLS 1.3 + Rate Limit)"]
+    end
+
+    subgraph AppTier["کانتینرهای برنامه (Application Tier)"]
+        WEB["Frontend Web Container\n(Next.js + TypeScript + Tailwind RTL)\nSSR + Declarative Conversation UI"]
+        API["Backend Core Modular Monolith\n(NestJS + TypeScript + Drizzle ORM)\nREST API + RBAC + Deterministic Engines"]
+        WORKER["Background Worker Container\n(NestJS BullMQ Consumers)\nReports, Sync, Posting, Outbox Relay"]
+        OCR_SVC["Document Intelligence & OCR Service\n(Python 3.12 + FastAPI + Worker)\nPreprocessing, Deskew, PaddleOCR, Table Parse"]
+    end
+
+    subgraph DataTier["لایه داده، صف و ذخیره‌سازی"]
+        PG[("PostgreSQL 16+\n109 Tables + FORCE RLS + pg_trgm\n(via PgBouncer Transaction Pool)")]
+        REDIS[("Redis 7+\nBullMQ Queues, Locks, Cache, Rate Limit")]
+        S3[("S3-Compatible Storage\n(MinIO / S3)\nEncrypted Docs & Export Artifacts")]
+    end
+
+    EXT_AI["External / Self-Hosted LLM Gateway\n(Provider-Agnostic Adapter)"]
+
+    CLIENT -->|"HTTPS"| RP
+    WIN_AGENT -->|"HTTPS (Device API Key + TLS)"| RP
+    RP --> WEB
+    RP -->|"/api/v1/*"| API
+    WEB -->|"Server/Client API Calls"| API
+    API -->|"SET LOCAL app.current_organization_id"| PG
+    WORKER -->|"SET LOCAL app.current_organization_id"| PG
+    API -->|"Enqueue Jobs & Pub/Sub"| REDIS
+    REDIS -->|"Consume Jobs"| WORKER
+    REDIS -->|"Consume OCR Jobs"| OCR_SVC
+    API -->|"Sync/Internal Callback (HMAC/mTLS)"| OCR_SVC
+    OCR_SVC -->|"Read Image / Write Thumbnails"| S3
+    API -->|"Pre-signed URLs & Put"| S3
+    WORKER -->|"Write PDF/Excel Exports"| S3
+    API -->|"Explain / Intent (No Financial Math)"| EXT_AI

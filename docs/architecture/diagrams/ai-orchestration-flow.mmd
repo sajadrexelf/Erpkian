@@ -1,0 +1,19 @@
+flowchart TB
+    USER_MSG["پیام متنی/صوتی یا سوال کاربر در Workspace مکالمه‌ای"]
+    SANITIZE["1. Input Sanitizer & Prompt Injection Guard\nتفکیک دستور کاربر از متن OCR غیرقابل اعتماد"]
+    INTENT["2. Intent & Slot Classifier\n(LLM Router با خروجی JSON ساختاریافته)"]
+    RBAC_CHK{"3. Pre-Execution RBAC & Branch Check\nبررسی مجوز atomic پیش از فراخوانی ابزار"}
+    DENY["ثبت در tool_invocations (DENIED)\n+ security_events + پاسخ ۴۰۳ مودبانه"]
+    MISSING{"4. بررسی تکمیل پارامترها و پیش‌نیازها\n(Data Readiness & Ambiguity Gate)"}
+    ASK["ارسال کارت تعاملی تکمیل اطلاعات / انتخاب بازه شمسی به UI"]
+    DETERM["5. اجرای ابزار قطعی در NestJS\n(Workflow Orchestrator / Calculation / Reporting Engine)\nمحاسبه ۱۰۰٪ در Backend و PostgreSQL RLS"]
+    ENVELOPE["6. دریافت ErpkianReportEnvelope v1\nشامل: metrics, warnings, confidence_level, evidences"]
+    EXPLAIN["7. Explain-Only Synthesizer (LLM Gateway)\nتوضیح فارسی نتایج فقط بر اساس اعداد Envelope\n(منع مطلق تولید عدد جدید یا تغییر محاسبه)"]
+    WIDGET["8. Declarative UI Response Payload\n(متن توضیحی + کارت KPI + جدول شواهد + Next Best Action)"]
+    AUDIT_AI["9. ذخیره در conversations, conversation_messages, tool_invocations"]
+
+    USER_MSG --> SANITIZE --> INTENT --> RBAC_CHK
+    RBAC_CHK -->|"بدون مجوز"| DENY
+    RBAC_CHK -->|"مجاز"| MISSING
+    MISSING -->|"ناقص / مبهم"| ASK
+    MISSING -->|"کامل"| DETERM --> ENVELOPE --> EXPLAIN --> WIDGET --> AUDIT_AI

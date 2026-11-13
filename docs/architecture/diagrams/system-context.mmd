@@ -1,0 +1,37 @@
+flowchart TB
+    subgraph Users["کاربران و نقش‌های سازمانی (9 Standard Roles)"]
+        OWNER["صاحب کسب‌وکار / مدیرعامل\n(OWNER / CEO)"]
+        CFO["مدیر مالی / حسابدار ارشد\n(CFO / SENIOR_ACCOUNTANT)"]
+        ACC["حسابدار / اپراتور\n(ACCOUNTANT / OPERATOR)"]
+        MGR["مدیر فروش / مدیر انبار\n(SALES_MGR / INV_MGR)"]
+        PERSONAL["کاربر مستقل\n(PERSONAL_USER)"]
+    end
+
+    ERPKIAN["پلتفرم Erpkian\n(AI-Native Accounting & Document Intelligence Platform)\nNext.js + NestJS + Python FastAPI + PostgreSQL"]
+
+    subgraph ExternalInputs["نرم‌افزارها و فایل‌های مبدأ مشتری"]
+        AGENT["عامل ویندوز محلی (.NET Windows Agent)\nRead-Only در v1 (هلو / سپیدار / راهکاران)"]
+        FILES["فایل‌های ورودی کاربر\n(PDF / عکس فاکتور / Excel / CSV صورتحساب بانک)"]
+    end
+
+    subgraph ExternalServices["سرویس‌های بیرونی و زیرساختی"]
+        LLM["ارائه‌دهنده مدل زبانی (AI Provider Gateway)\nExplain-Only / Intent Routing / Fallback"]
+        OCR_EXT["موتورهای OCR / VLM\n(Self-Hosted PaddleOCR + Optional Vision Fallback)"]
+        STORAGE["فضای ذخیره‌سازی اشیا (S3 / MinIO)\nنگهداری نسخه اصلی تغییرناپذیر"]
+        NOTIFY["درگاه اعلان (Email / SMS / Push)"]
+    end
+
+    subgraph FutureLocked["اتصالات آتی قفل‌شده در v1"]
+        MOADIAN["سامانه مودیان و TTMS 169\n(LOCKED_IN_V1 — فقط آماده‌سازی و اعتبارسنجی)"]
+        BANK_API["درگاه Open Banking مستقیم\n(DEFERRED_TO_FUTURE_PHASE)"]
+    end
+
+    OWNER & CFO & ACC & MGR & PERSONAL -->|"HTTPS / TLS 1.3 (RTL Web & Mobile Web)"| ERPKIAN
+    FILES -->|"Upload (Pre-signed / Multipart + SHA-256)"| ERPKIAN
+    AGENT -->|"HTTPS + mTLS/Device Token (Outbound Only)"| ERPKIAN
+    ERPKIAN -->|"Tool Calling / Explain Only (PII Scrubbed)"| LLM
+    ERPKIAN -->|"Internal Queue / gRPC or HTTP"| OCR_EXT
+    ERPKIAN -->|"Encrypted Object Put / 2-min Pre-signed Get"| STORAGE
+    ERPKIAN -->|"Webhook / SMTP / SMS Provider"| NOTIFY
+    ERPKIAN -.->|"قفل‌شده در v1 (TAX-SUB-* Disabled)"| MOADIAN
+    ERPKIAN -.->|"در v1 فقط Excel/CSV/PDF وارد می‌شود"| BANK_API

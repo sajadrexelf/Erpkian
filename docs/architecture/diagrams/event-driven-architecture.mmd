@@ -1,0 +1,35 @@
+flowchart LR
+    subgraph DBTx["تراکنش اتمیک PostgreSQL (Domain + Outbox)"]
+        DOMAIN["تغییر جدول دامنه\n(invoices, payments, documents, ...)"]
+        OUTBOX_TBL[("جدول transactional_outbox\n(event_id, event_type, org_id, payload)")]
+        DOMAIN ---|"در همان ACID Transaction"| OUTBOX_TBL
+    end
+
+    RELAY["Outbox Relay Worker\n(Polling / LISTEN-NOTIFY -> BullMQ)"]
+    OUTBOX_TBL -->|"تضمین At-Least-Once Delivery"| RELAY
+
+    subgraph Queues["صف‌های BullMQ روی Redis"]
+        Q_OCR["q.ocr.preprocess / q.ocr.extract"]
+        Q_POST["q.finance.posting"]
+        Q_RECON["q.reconciliation.run"]
+        Q_SYNC["q.integration.sync"]
+        Q_RPT["q.reporting.generate"]
+        Q_EXP["q.export.render"]
+        Q_NOTIF["q.notifications.dispatch"]
+        Q_DLQ["q.dead-letter (DLQ)"]
+    end
+
+    RELAY --> Q_OCR & Q_POST & Q_RECON & Q_SYNC & Q_RPT & Q_EXP & Q_NOTIF
+
+    subgraph Consumers["مصرف‌کنندگان Idempotent"]
+        C1["Document/OCR Workers"]
+        C2["Financial & Inventory Workers"]
+        C3["Report & PDF/Excel Workers"]
+        C4["Notification & Alert Workers"]
+    end
+
+    Q_OCR --> C1
+    Q_POST & Q_RECON & Q_SYNC --> C2
+    Q_RPT & Q_EXP --> C3
+    Q_NOTIF --> C4
+    C1 & C2 & C3 & C4 -->|"پس از Max Retries ناموفق"| Q_DLQ

@@ -1,0 +1,53 @@
+flowchart LR
+    %% لایه مشترک و هسته
+    COMMON["Common / Kernel\n(TenantRunner, DecimalMath, JalaliDate, Errors)"]
+    AUTH["Auth & Identity"]
+    ORG["Organization & Tenancy"]
+    RBAC["RBAC & Permissions"]
+    FISCAL["Fiscal Calendar & Currency"]
+
+    %% دامنه‌های عملیاتی
+    CONTACTS["Contacts & Entity Resolution"]
+    PRODUCTS["Products & Multi-UoM"]
+    DOCS["Document Management"]
+    OCR["OCR & Extraction Review"]
+    INVOICES["Invoices (AR/AP)"]
+    PAYMENTS["Payments & Allocations"]
+    TREASURY["Treasury, Bank & Checks"]
+    INVENTORY["Inventory & Stock Ledger"]
+    RECON["Reconciliation Engine"]
+    PROFIT["Profitability & COGS"]
+    TAX["Tax Prep & Validation"]
+    REPORT["Reporting & Snapshots"]
+    EXPORT["Export Worker (PDF/Excel/CSV)"]
+    WORKFLOW["Workflow & Approvals"]
+    AI["AI Orchestration"]
+    INTEGRATION["Accounting Integration"]
+    AGENT["Windows Agent Gateway"]
+    AUDIT["Audit & Security Events"]
+    NOTIFY["Notifications"]
+    SUB["Subscription & Usage"]
+
+    %% وابستگی‌های مجاز رو به پایین
+    AUTH & ORG & RBAC & FISCAL --> COMMON
+    RBAC --> ORG & AUTH
+    FISCAL --> ORG
+    CONTACTS & PRODUCTS --> FISCAL & ORG
+    DOCS --> ORG & AUDIT
+    OCR --> DOCS & CONTACTS & PRODUCTS & WORKFLOW
+    INVOICES --> CONTACTS & PRODUCTS & FISCAL & DOCS & WORKFLOW
+    PAYMENTS --> INVOICES & CONTACTS & FISCAL
+    TREASURY --> PAYMENTS & CONTACTS & FISCAL
+    INVENTORY --> PRODUCTS & INVOICES & FISCAL
+    RECON --> TREASURY & PAYMENTS & INVENTORY
+    PROFIT --> INVOICES & INVENTORY & FISCAL
+    TAX --> INVOICES & CONTACTS & FISCAL
+    REPORT --> INVOICES & PAYMENTS & TREASURY & INVENTORY & PROFIT & RECON
+    EXPORT --> REPORT & DOCS
+    AI --> WORKFLOW & REPORT & DOCS & RBAC
+    INTEGRATION --> CONTACTS & PRODUCTS & INVOICES & TREASURY & DOCS
+    AGENT --> INTEGRATION & AUTH
+    WORKFLOW --> RBAC & AUDIT & NOTIFY
+    SUB --> ORG & AUDIT
+
+    %% نکته: چرخه بین ماژول‌ها اکیداً ممنوع است و ارتباط عرضی از طریق Domain Events انجام می‌شود.

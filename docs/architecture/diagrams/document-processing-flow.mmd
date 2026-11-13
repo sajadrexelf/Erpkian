@@ -1,0 +1,39 @@
+sequenceDiagram
+    autonumber
+    actor User as کاربر (اپراتور / حسابدار)
+    participant Web as Next.js UI
+    participant API as NestJS Document Module
+    participant S3 as MinIO / S3 Storage
+    participant DB as PostgreSQL (RLS)
+    participant Q as Redis / BullMQ
+    participant OCR as Python FastAPI OCR
+
+    User->>Web: انتخاب عکس/PDF فاکتور (یک یا چند صفحه)
+    Web->>API: POST /api/v1/documents/upload (Idempotency-Key)
+    API->>API: محاسبه SHA-256 و بررسی تکراری (VR-DUP-01)
+    API->>S3: ذخیره نسخه خام تغییرناپذیر (<org_id>/<doc_id>/original)
+    API->>DB: INSERT documents (status='Uploaded'), document_versions, outbox_events
+    API->>Q: Enqueue job -> q.ocr.preprocess
+    API-->>Web: 202 Accepted + document_id + job_status='QUEUED'
+
+    Q->>OCR: Dispatch q.ocr.preprocess (document_id, storage_key)
+    OCR->>S3: Download Original Image
+    OCR->>OCR: Deskew, Denoise, Dewarp, Merge PDF & Quality Score
+    alt quality_score < 0.65 (آستانه قابل تنظیم OD-12)
+        OCR-->>API: Callback: LOW_QUALITY_IMAGE
+        API->>DB: UPDATE status='Needs Review' + processing_warnings
+        API-->>User: اعلان درخواست تصویر واضح‌تر (با حفظ نسخه اصلی)
+    else quality_score >= 0.65
+        OCR->>OCR: PaddleOCR + Persian Digit Norm + Table/BBox Extraction
+        OCR->>OCR: Document Classification (SALES/PURCHASE/RECEIPT/CHEQUE)
+        OCR-->>API: Submit extraction_attempts + extracted_fields + table_cells
+        API->>DB: Persist Extraction Results (raw_value + normalized_value + bbox)
+        API->>API: اجرای Math Validator (VR-MATH-01..05) و Entity Fuzzy Match (pg_trgm)
+        alt line_math_error OR confidence < 0.85 OR unmatched_entity
+            API->>DB: UPDATE documents status='Needs Review' + entity_match_candidates
+            API-->>User: نمایش تصویر + هایلایت BBox فیلدهای نیازمند بازبینی
+        else تمام فیلدها بالای آستانه و ریاضی صحیح
+            API->>DB: UPDATE documents status='Needs Review' یا 'Verified' (هرگز Posted خودکار!)
+            Note over API,DB: OD-12: خروجی OCR در هیچ حالتی خودکار Posted نمی‌شود
+        end
+    end

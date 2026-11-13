@@ -1,0 +1,27 @@
+flowchart TB
+    START(["شروع: درخواست تایید قطعی سند مالی\nPOST /api/v1/invoices/:id/post (Idempotency-Key)"])
+    AUTH["1. AuthGuard + RbacGuard\nبررسی مجوز 'invoice:post' و branch_scope_id"]
+    IDEMP{"2. بررسی Idempotency Key\nدر تراکنش سازمان"}
+    STATE{"3. بررسی چرخه عمر\nوضعیت فعلی === 'Verified'؟"}
+    PERIOD{"4. بررسی قفل دوره مالی\nfiscal_periods.status === 'OPEN'؟"}
+    MATH["5. بازمحاسبه قطعی ریاضی\n(VR-MATH, VR-CURR, VR-UOM)\nدر موتور Decimal/BigInt"]
+    DUAL{"6. بررسی سقف تایید دوامضایی\nnet_total_irr > require_dual_approval_above_irr\nو عدم وجود تایید دوم؟"}
+    WAIT_APP["ایجاد رکورد در approval_requests\nوضعیت سند: 'Awaiting Approval'\nارسال اعلان به CFO / OWNER"]
+    STOCK{"7. بررسی موجودی انبار (در صورت SALE)\nallow_negative_stock === false و کمبود موجودی؟"}
+    COMMIT["8. اجرای تراکنش اتمیک PostgreSQL (SET LOCAL org_id):\n- بروزرسانی invoices.lifecycle_status = 'Posted'\n- درج inventory_movements (PURCHASE_IN / SALE_OUT)\n- بروزرسانی تخصیص/مانده و cost layers\n- درج اجباری در audit_logs\n- درج Domain Event در Outbox"]
+    ERR_PERIOD(["خطای 422: FISCAL_PERIOD_CLOSED"])
+    ERR_STOCK(["خطای 422: INSUFFICIENT_STOCK"])
+    ERR_STATE(["خطای 409: INVALID_LIFECYCLE_STATE"])
+    DONE(["200 OK: سند Posted و تغییرناپذیر شد\n(اصلاح بعدی فقط با سند معکوس Reversed)"])
+
+    START --> AUTH --> IDEMP
+    IDEMP -->|"درخواست تکراری"| DONE
+    IDEMP -->|"درخواست جدید"| STATE
+    STATE -->|"خیر"| ERR_STATE
+    STATE -->|"بله"| PERIOD
+    PERIOD -->|"CLOSED / LOCKED"| ERR_PERIOD
+    PERIOD -->|"OPEN"| MATH --> DUAL
+    DUAL -->|"بله (نیازمند امضای دوم متفاوت)"| WAIT_APP
+    DUAL -->|"خیر (یا تایید شده)"| STOCK
+    STOCK -->|"کمبود مجاز نیست"| ERR_STOCK
+    STOCK -->|"کافی یا تنظیم‌شده با هشدار"| COMMIT --> DONE

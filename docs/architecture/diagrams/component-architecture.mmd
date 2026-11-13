@@ -1,0 +1,39 @@
+flowchart TB
+    subgraph NestCore["Backend Modular Monolith — اجزای داخلی کلیدی (C4 Level 3)"]
+        direction TB
+        GW_HTTP["HTTP Controllers + Validation Pipes (Zod/DTO)"]
+        GUARDS["AuthGuard + RbacGuard + BranchScopeGuard"]
+        IDEMP["IdempotencyInterceptor + TenantTransactionRunner"]
+
+        subgraph OrchestrationLayer["هماهنگ‌سازی و دستیار"]
+            AI_ORCH["AI Orchestration Module\n(Intent Router, Context Builder, Tool Registry, Explain Gate)"]
+            WF_ENGINE["Workflow Engine\n(State Machine, Checkpoints, Approval Gate)"]
+        end
+
+        subgraph DomainLayer["ماژول‌های دامنه قطعی (Deterministic)"]
+            DOC_MOD["Document & Extraction Review Module"]
+            ENT_MOD["Entity Resolution & Contacts/Products Module"]
+            FIN_MOD["AR / AP / Invoices / Payments / Checks Module"]
+            INV_MOD["Inventory & Costing Module (FIFO / Weighted Avg)"]
+            REC_MOD["Bank & Inventory Reconciliation Module"]
+            RPT_MOD["Snapshot, Reporting & Evidence Module"]
+            TAX_MOD["Tax Prep & Validation Module (Submission Locked)"]
+        end
+
+        subgraph InfraLayer["زیرساخت و یکپارچه‌سازی"]
+            OUTBOX["Transactional Outbox + BullMQ Publisher"]
+            AUDIT["Immutable Audit & Security Event Logger"]
+            DRIZZLE["Drizzle Repositories + SQL Migrations"]
+        end
+    end
+
+    GW_HTTP --> GUARDS --> IDEMP
+    IDEMP --> AI_ORCH & WF_ENGINE & DOC_MOD & FIN_MOD & INV_MOD & REC_MOD & RPT_MOD & TAX_MOD
+    AI_ORCH -->|"Permission-Checked Read/Draft Tools Only"| WF_ENGINE
+    WF_ENGINE --> DOC_MOD & ENT_MOD & FIN_MOD & INV_MOD & REC_MOD & RPT_MOD
+    FIN_MOD --> INV_MOD
+    REC_MOD --> FIN_MOD
+    RPT_MOD --> FIN_MOD & INV_MOD & REC_MOD
+    DOC_MOD & FIN_MOD & INV_MOD & REC_MOD & WF_ENGINE --> AUDIT
+    DOC_MOD & FIN_MOD & INV_MOD & RPT_MOD --> OUTBOX
+    DOC_MOD & ENT_MOD & FIN_MOD & INV_MOD & REC_MOD & RPT_MOD & TAX_MOD & AUDIT & OUTBOX --> DRIZZLE

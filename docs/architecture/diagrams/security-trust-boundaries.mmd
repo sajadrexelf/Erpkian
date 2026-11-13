@@ -1,0 +1,31 @@
+flowchart TB
+    subgraph Zone0["Zone 0 —Untrusted Public & Customer Edge"]
+        BROWSER["مرورگر کاربر / موبایل"]
+        WIN["Windows Agent (محیط مشتری)"]
+        OCR_RAW["متن خام فایل/تصویر (Untrusted Input against Prompt Injection)"]
+    end
+
+    subgraph Zone1["Zone 1 — DMZ / Perimeter Security"]
+        WAF["WAF + TLS 1.3 Termination + Rate Limiting + Size/MIME Guard"]
+    end
+
+    subgraph Zone2["Zone 2 — Application & Authorization Core"]
+        AUTH["JWT Verification + Session Check + Device Token Check"]
+        RBAC["Permission Guard (resource:action) + branch_scope_id + Dual Approval"]
+        LLM_GUARD["AI Gateway (PII Redaction + Schema-Bounded Tool Calling + No Direct DB)"]
+    end
+
+    subgraph Zone3["Zone 3 — Restricted Financial Data & Storage"]
+        PG_RLS[("PostgreSQL (NOBYPASSRLS + FORCE RLS + Composite FKs)\n+ Immutable audit_logs (INSERT/SELECT Only)")]
+        S3_ENC[("S3/MinIO (Private Buckets + SSE Encryption + 2-min Pre-signed URL)")]
+        VAULT[("Vault / KMS (Integration Secrets, DB Credentials, Signing Keys)")]
+    end
+
+    BROWSER -->|"HTTPS"| WAF
+    WIN -->|"HTTPS + Scoped Revocable Device Key"| WAF
+    OCR_RAW -->|"Isolated Parser (No Executable Eval)"| Zone2
+    WAF --> AUTH --> RBAC
+    RBAC -->|"Validated Context"| LLM_GUARD
+    RBAC -->|"TenantTransactionRunner (SET LOCAL org_id)"| PG_RLS
+    RBAC -->|"Authorized Short-Lived Signed URL"| S3_ENC
+    Zone2 -->|"Secret Lookup Only"| VAULT
