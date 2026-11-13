@@ -1,0 +1,82 @@
+%% 04-erd-documents.mmd — Domain 5 & 6: Document Management, OCR, Extraction & Human Review
+erDiagram
+    organizations ||--o{ document_batches : "receives"
+    organization_memberships ||--o{ document_batches : "uploads"
+    organizations ||--o{ document_storage_objects : "stores"
+    document_types ||--o{ documents : "classifies"
+    document_batches ||--o{ documents : "groups"
+    branches ||--o{ documents : "originates_at"
+    organizations ||--o{ documents : "owns"
+    documents ||--o{ documents : "duplicate_of"
+    documents ||--o{ document_versions : "maintains"
+    document_storage_objects ||--o{ document_versions : "backs"
+    document_versions ||--o{ document_pages : "splits_into"
+    document_storage_objects ||--o{ document_pages : "renders"
+    documents ||--o{ document_relations : "links_to_financial"
+    documents ||--o{ document_access_logs : "audits_access"
+    organization_memberships ||--o{ document_access_logs : "accesses"
+
+    documents ||--o{ extraction_jobs : "triggers"
+    document_versions ||--o{ extraction_jobs : "targets"
+    extraction_jobs ||--o{ extraction_attempts : "runs"
+    extraction_model_versions ||--o{ extraction_attempts : "executes_with"
+    document_types ||--o{ extraction_attempts : "detects"
+    extraction_attempts ||--o{ ocr_page_results : "produces_page_ocr"
+    document_pages ||--o{ ocr_page_results : "corresponds_to"
+    extraction_attempts ||--o{ extracted_fields : "extracts_fields"
+    document_pages ||--o{ extracted_fields : "located_on"
+    extraction_attempts ||--o{ extracted_tables : "extracts_tables"
+    extracted_tables ||--o{ extracted_table_rows : "contains_rows"
+    extracted_table_rows ||--o{ extracted_table_cells : "contains_cells"
+    documents ||--o{ extraction_reviews : "reviewed_in"
+    extraction_attempts ||--o{ extraction_reviews : "evaluates"
+    organization_memberships ||--o{ extraction_reviews : "reviewed_by"
+    extraction_reviews ||--o{ extraction_corrections : "records_edits"
+
+    documents {
+        uuid organization_id PK_FK
+        uuid id PK
+        uuid batch_id FK
+        uuid document_type_id FK
+        varchar original_filename
+        varchar lifecycle_status
+        uuid duplicate_of_document_id FK
+        timestamptz uploaded_at
+    }
+    document_storage_objects {
+        uuid organization_id PK_FK
+        uuid id PK
+        varchar object_key UK
+        char sha256_hash
+        bigint byte_size
+        boolean is_immutable_original
+    }
+    extraction_attempts {
+        uuid organization_id PK_FK
+        uuid id PK
+        uuid extraction_job_id FK
+        int attempt_number
+        uuid model_version_id FK
+        numeric overall_confidence
+        boolean math_validation_passed
+    }
+    extracted_fields {
+        uuid organization_id PK_FK
+        uuid id PK
+        uuid extraction_attempt_id FK
+        varchar field_key
+        text raw_value
+        text normalized_value
+        numeric confidence
+        varchar review_status
+    }
+    extraction_corrections {
+        uuid organization_id PK_FK
+        uuid id PK
+        uuid extraction_review_id FK
+        varchar target_kind
+        uuid target_id
+        text value_before
+        text value_after
+        timestamptz corrected_at
+    }

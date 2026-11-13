@@ -1,0 +1,84 @@
+%% 06-erd-processing.mmd — Domain 8, 9, 10, 11, 12 & 13: Integration, Reconciliation, Workflow, Reporting, AI & Audit
+erDiagram
+    source_systems ||--o{ integration_connections : "connects_via"
+    organizations ||--o{ integration_connections : "configures"
+    integration_connections ||--o{ external_entity_mappings : "maps_ids"
+    integration_connections ||--o{ sync_jobs : "executes"
+    integration_connections ||--o{ sync_cursors : "checkpoints"
+    sync_jobs ||--o{ sync_errors : "logs_failures"
+    documents ||--o{ import_batches : "parses_file"
+    import_batches ||--|{ import_rows : "splits_rows"
+
+    organizations ||--o{ reconciliation_rules : "customizes"
+    organizations ||--o{ reconciliation_runs : "executes"
+    reconciliation_runs ||--o{ reconciliation_matches : "proposes_or_confirms"
+    reconciliation_runs ||--o{ reconciliation_exceptions : "surfaces"
+
+    service_definitions ||--o{ workflow_definitions : "orchestrates"
+    workflow_definitions ||--o{ workflow_executions : "instantiates"
+    organization_memberships ||--o{ workflow_executions : "initiates"
+    workflow_executions ||--o{ workflow_step_executions : "transitions"
+    workflow_executions ||--o{ processing_jobs : "dispatches"
+    processing_jobs ||--o{ processing_results : "produces"
+    processing_results ||--o{ processing_result_sources : "cites"
+    processing_jobs ||--o{ processing_warnings : "emits_warnings"
+    processing_jobs ||--o{ processing_errors : "emits_errors"
+    workflow_executions ||--o{ approval_requests : "gates_approval"
+
+    service_definitions ||--o{ report_definitions : "generates"
+    organizations ||--o{ report_data_snapshots : "freezes_data"
+    report_definitions ||--o{ report_executions : "runs"
+    report_data_snapshots ||--o{ report_executions : "binds_snapshot"
+    workflow_executions ||--o{ report_executions : "produces_report"
+    report_executions ||--|{ report_versions : "versions"
+    report_versions ||--o{ report_metrics : "measures"
+    report_versions ||--o{ report_evidences : "links_evidence"
+    report_metrics ||--o{ report_evidences : "substantiates"
+    report_versions ||--o{ report_outputs : "exports_files"
+
+    organization_memberships ||--o{ conversations : "chats_in"
+    conversations ||--|| conversation_contexts : "maintains_context"
+    conversations ||--|{ conversation_messages : "exchanges"
+    conversation_messages ||--o{ tool_invocations : "invokes_tools"
+    conversation_messages ||--o{ user_feedback : "rates"
+    organization_memberships ||--o{ assistant_recommendations : "receives_proactive"
+    service_definitions ||--o{ assistant_recommendations : "suggests_service"
+
+    organizations ||--o{ audit_logs : "records_immutable"
+    organizations ||--o{ security_events : "monitors"
+    organization_memberships ||--o{ notifications : "notifies"
+    organization_memberships ||--o{ notification_preferences : "configures_alerts"
+
+    workflow_executions {
+        uuid organization_id PK_FK
+        uuid id PK
+        uuid workflow_definition_id FK
+        varchar current_state
+        varchar idempotency_key UK
+        timestamptz started_at
+    }
+    report_versions {
+        uuid organization_id PK_FK
+        uuid id PK
+        uuid report_execution_id FK
+        int version_number
+        boolean is_latest
+    }
+    report_evidences {
+        uuid organization_id PK_FK
+        uuid id PK
+        uuid report_version_id FK
+        uuid report_metric_id FK
+        varchar source_entity_type
+        uuid source_entity_id
+        uuid source_document_id FK
+    }
+    audit_logs {
+        uuid organization_id PK_FK
+        uuid id PK
+        uuid actor_membership_id FK
+        varchar action_code
+        varchar entity_type
+        uuid entity_id
+        timestamptz occurred_at
+    }

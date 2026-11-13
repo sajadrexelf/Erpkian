@@ -1,0 +1,99 @@
+%% 05-erd-financial.mmd — Domain 3, 4 & 7: Contacts, Products, Inventory, Invoices, Payments, Checks & Bank
+erDiagram
+    organizations ||--o{ contacts : "maintains"
+    contacts ||--o{ contacts : "merged_into"
+    contacts ||--o{ contact_roles : "plays_roles"
+    contacts ||--o{ contact_identifiers : "identified_by"
+    contacts ||--o{ contact_addresses : "located_at"
+    organizations ||--o{ entity_match_candidates : "detects_duplicates"
+    organizations ||--o{ entity_merge_history : "audits_merges"
+
+    organizations ||--o{ product_categories : "categorizes"
+    product_categories ||--o{ product_categories : "parent_of"
+    organizations ||--o{ products : "manages"
+    product_categories ||--o{ products : "groups"
+    units_of_measure ||--o{ products : "base_uom"
+    products ||--o{ product_identifiers : "identified_by"
+    products ||--o{ product_units : "converts_units"
+    units_of_measure ||--o{ product_units : "secondary_uom"
+    branches ||--o{ warehouses : "operates"
+    warehouses ||--o{ inventory_locations : "contains_bins"
+    warehouses ||--o{ inventory_movements : "records"
+    products ||--o{ inventory_movements : "moves"
+    fiscal_periods ||--o{ inventory_movements : "bounded_by"
+    warehouses ||--o{ inventory_adjustments : "adjusts"
+    warehouses ||--o{ stock_snapshots : "snapshots"
+    products ||--o{ stock_snapshots : "valued_for"
+
+    contacts ||--o{ invoices : "billed_or_supplies"
+    branches ||--o{ invoices : "issues_receives"
+    fiscal_periods ||--o{ invoices : "posted_in"
+    documents ||--o{ invoices : "primary_evidence"
+    invoices ||--o{ invoices : "reverses"
+    invoices ||--|{ invoice_lines : "contains"
+    products ||--o{ invoice_lines : "line_item"
+    warehouses ||--o{ invoice_lines : "fulfills"
+    invoices ||--o{ invoice_adjustments : "adjusts_total"
+
+    organizations ||--o{ bank_accounts : "holds"
+    branches ||--o{ bank_accounts : "assigned_to"
+    contacts ||--o{ payments : "pays_or_receives"
+    bank_accounts ||--o{ payments : "settles_from_to"
+    fiscal_periods ||--o{ payments : "posted_in"
+    payments ||--o{ payments : "reverses"
+    payments ||--o{ payment_allocations : "allocates"
+    invoices ||--o{ payment_allocations : "settled_by"
+
+    contacts ||--o{ checks : "issuer_payee"
+    bank_accounts ||--o{ checks : "drawn_or_deposited"
+    payments ||--o{ checks : "backed_by"
+    checks ||--o{ check_status_history : "tracks_lifecycle"
+    bank_accounts ||--o{ bank_transactions : "statement_lines"
+    bank_transactions ||--o{ check_status_history : "clears_or_bounces"
+    fiscal_periods ||--o{ financial_adjustments : "adjusts_in"
+
+    organizations ||--o{ accounting_entries : "future_gl_provisional"
+    accounting_entries ||--|{ accounting_entry_lines : "balances_provisional"
+
+    invoices {
+        uuid organization_id PK_FK
+        uuid id PK
+        varchar invoice_direction
+        varchar invoice_number
+        date issue_date
+        date due_date
+        uuid contact_id FK
+        char currency_code FK
+        numeric net_total_irr
+        varchar lifecycle_status
+        varchar idempotency_key UK
+    }
+    payment_allocations {
+        uuid organization_id PK_FK
+        uuid id PK
+        uuid payment_id FK
+        uuid invoice_id FK
+        numeric allocated_amount_irr
+        varchar allocation_method
+        varchar status
+    }
+    checks {
+        uuid organization_id PK_FK
+        uuid id PK
+        varchar check_direction
+        varchar sayad_id
+        date due_date
+        numeric amount_irr
+        varchar current_status
+    }
+    inventory_movements {
+        uuid organization_id PK_FK
+        uuid id PK
+        uuid warehouse_id FK
+        uuid product_id FK
+        varchar movement_type
+        numeric source_qty
+        numeric base_qty_signed
+        numeric total_cost_irr
+        varchar status
+    }

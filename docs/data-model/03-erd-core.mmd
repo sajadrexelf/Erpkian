@@ -1,0 +1,70 @@
+%% 03-erd-core.mmd — Domain 1 & 2: Core Organization, Identity, RBAC, Fiscal & Localization
+erDiagram
+    business_types ||--o{ organizations : "classifies"
+    business_types ||--o{ business_profiles : "templates"
+    organizations ||--|| business_profiles : "has_profile"
+    organizations ||--|| organization_settings : "configures"
+    organizations ||--o{ branches : "owns"
+    organizations ||--o{ organization_memberships : "has_members"
+    users ||--o{ organization_memberships : "belongs_to"
+    branches ||--o{ organization_memberships : "default_branch"
+    organizations ||--o{ roles : "defines_custom"
+    roles ||--o{ role_permissions : "grants"
+    permissions ||--o{ role_permissions : "assigned_to"
+    organization_memberships ||--o{ membership_roles : "holds"
+    roles ||--o{ membership_roles : "mapped_via"
+    branches ||--o{ membership_roles : "scopes_optional"
+    organizations ||--o{ invitations : "issues"
+    roles ||--o{ invitations : "pre_assigns"
+
+    currencies ||--o{ organizations : "base_currency"
+    organizations ||--o{ exchange_rates : "tracks"
+    currencies ||--o{ exchange_rates : "converts_from_to"
+    organizations ||--o{ fiscal_years : "defines"
+    fiscal_years ||--o{ fiscal_periods : "contains"
+    fiscal_periods ||--o{ period_locks : "audits_locks"
+    organization_memberships ||--o{ period_locks : "executes_approves"
+    organizations ||--o{ accounting_policies : "governs"
+    organizations ||--o{ units_of_measure : "extends"
+    units_of_measure ||--o{ unit_conversions : "converts"
+
+    organizations ||--o{ subscriptions : "subscribes"
+    subscription_plans ||--o{ subscriptions : "defines"
+    subscriptions ||--o{ usage_records : "meters"
+    subscriptions ||--o{ usage_limits : "enforces"
+    organizations ||--o{ data_retention_policies : "sets_retention"
+
+    organizations {
+        uuid id PK
+        varchar name
+        varchar slug UK
+        uuid business_type_id FK
+        char base_currency_code FK
+        varchar status
+    }
+    organization_memberships {
+        uuid organization_id PK_FK
+        uuid id PK
+        uuid user_id FK
+        uuid default_branch_id FK
+        varchar membership_status
+    }
+    fiscal_periods {
+        uuid organization_id PK_FK
+        uuid id PK
+        uuid fiscal_year_id FK
+        int period_number
+        date start_date
+        date end_date
+        char start_jalali
+        char end_jalali
+        varchar status
+    }
+    accounting_policies {
+        uuid organization_id PK_FK
+        uuid id PK
+        date effective_from
+        varchar accounting_mode
+        varchar inventory_valuation_method
+        varchar payment_allocation_method
+    }
