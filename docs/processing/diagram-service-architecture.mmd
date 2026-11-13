@@ -1,0 +1,48 @@
+flowchart TB
+    subgraph Channels["کانال‌های ورودی و تعامل"]
+        UI["وب‌اپلیکیشن و موبایل وب (Next.js)"]
+        AI["دستیار هوشمند مکالمه‌ای (LLM Layer)"]
+        EXT["نرم‌افزارهای مبدأ (هلو / سپیدار / Excel / Windows Agent)"]
+    end
+
+    subgraph Security["لایه امنیت و کنترل دسترسی"]
+        AUTH["AuthGuard + JWT"]
+        RBAC["RBAC Guard (roles / permissions / branch_scope_id)"]
+        RLS["PostgreSQL RLS (SET LOCAL app.current_organization_id)"]
+    end
+
+    subgraph Orchestration["لایه هماهنگ‌سازی گردشکار (LLM-Independent)"]
+        ORCH["Workflow Orchestrator (workflow_definitions / workflow_executions)"]
+        APPR["Human Approval Gate (approval_requests / Dual Approval)"]
+        READY["Data Readiness & Missing Data Detector"]
+    end
+
+    subgraph Ingestion["لایه اسناد، OCR و استانداردسازی"]
+        DOC["Document Management (documents / document_versions / S3)"]
+        OCR["Python FastAPI OCR & Table Extractor"]
+        NORM["Entity Resolution & Normalization (contacts / products / UoM)"]
+    end
+
+    subgraph Deterministic["موتور پردازش قطعی (Deterministic Financial Engine)"]
+        VAL["Validation Engine (VR-MATH / VR-DATE / VR-DUP / VR-PER)"]
+        CALC["Calculation Engine (AR / AP / Treasury / Inventory / Profit)"]
+        RECON["Reconciliation Engine (Bank / Party / Inventory)"]
+    end
+
+    subgraph Reporting["موتور گزارش و شواهد"]
+        SNAP["Data Snapshotter (report_data_snapshots)"]
+        RPT["Versioned Reporting (report_versions / report_metrics)"]
+        EVID["Evidence Linker (report_evidences / processing_result_sources)"]
+        EXP["Export Worker (JSON / PDF / Excel / CSV)"]
+    end
+
+    UI & AI & EXT --> AUTH --> RBAC --> ORCH
+    ORCH --> READY
+    ORCH --> DOC --> OCR --> NORM --> VAL
+    VAL -->|"Needs Review / بالای سقف"| APPR
+    APPR -->|"Approved"| CALC
+    READY --> CALC
+    CALC --> RECON
+    CALC & RECON --> SNAP --> RPT --> EVID --> EXP
+    RPT -->|"Explain Only (No Math)"| AI
+    ORCH & VAL & CALC & RPT --> RLS

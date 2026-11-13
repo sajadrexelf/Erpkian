@@ -1,0 +1,19 @@
+flowchart TD
+    START(["آپلود تصویر، PDF چندصفحه‌ای یا پرینت جدول"]) --> HASH{"بررسی SHA-256\nدر document_storage_objects"}
+    HASH -->|"فایل تکراری در سازمان"| DUP["ثبت هشدار فایل تکراری\nduplicate_of_document_id + نمایش لینک سند قبلی"]
+    HASH -->|"فایل جدید"| SAVE["ذخیره نسخه خام تغییرناپذیر\ndocument_versions v1 ORIGINAL"]
+    SAVE --> SPLIT["جداسازی صفحات PDF و برش/چرخش\ndocument_pages + ارزیابی کیفیت"]
+    SPLIT --> QUALITY{"quality_score >= 0.65\nو خوانایی قابل قبول؟"}
+    QUALITY -->|"خیر (تار/ناخوانا)"| BLUR["پرچم is_blurry_flagged = true\nدرخواست تصویر بهتر از کاربر"]
+    BLUR -->|"آپلود مجدد"| SAVE
+    QUALITY -->|"بله"| OCR["ارسال به صف Redis/BullMQ -> Python OCR\nextraction_jobs / extraction_attempts"]
+    OCR --> EXTRACT["استخراج هدر (extracted_fields)\nو جدول اقلام (extracted_tables/rows/cells)\nبا مختصات bbox و confidence"]
+    EXTRACT --> MATH["کنترل حسابی قطعی:\nتعداد × فی - تخفیف + مالیات == جمع سطر و کل"]
+    MATH --> ENTITY["تطبیق نام طرف‌حساب و کالا\nentity_match_candidates (pg_trgm)"]
+    ENTITY --> GATE{"آیا math_validation_passed = true\nو همه فیلدها Confidence >= آستانه؟"}
+    GATE -->|"خیر"| REVIEW["وضعیت سند: Needs Review\nنمایش تصویر + هایلایت سلول خطادار"]
+    GATE -->|"بله"| FASTREVIEW["پیشنهاد پیش‌تایید با الزام تایید نهایی کاربر\n(هرگز Posted خودکار بدون تایید نیست)"]
+    REVIEW --> HUMAN["اصلاح/تایید کاربر در UI\nثبت در extraction_reviews و extraction_corrections"]
+    FASTREVIEW --> HUMAN
+    HUMAN -->|"تایید نهایی"| VERIFIED["وضعیت سند: Verified -> Eligible for Posting"]
+    HUMAN -->|"رد سند"| REJECTED["وضعیت سند: Rejected"]

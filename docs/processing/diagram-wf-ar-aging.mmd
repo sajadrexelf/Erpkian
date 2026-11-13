@@ -1,0 +1,13 @@
+flowchart TD
+    START(["درخواست تحلیل سنی مطالبات (FIN-AR-AGING-001)"]) --> RBAC["بررسی مجوز ar:view_aging\nو محدوده branch_scope_id"]
+    RBAC --> PARAMS["تنظیم پارامترها:\nتاریخ مبنا (as_of_date)، بازه‌های سنی [0-30, 31-60, 61-90, +90]، ارز نمایش"]
+    PARAMS --> READINESS["بررسی وضعیت فاکتورها و دریافت‌های سازمان"]
+    READINESS --> CHECK{"آیا فاکتور یا دریافت\nNeeds Review وجود دارد؟"}
+    CHECK -->|"خیر (همه Posted)"| CONF_H["سطح اطمینان: HIGH\nفریز اسنپ‌شات داده‌ای"]
+    CHECK -->|"بله (مثلاً ۲ سند معلق)"| CONF_M["سطح اطمینان: MEDIUM/LOW\nثبت هشدار PENDING_DOCS_EXCLUDED در processing_warnings"]
+    CONF_H & CONF_M --> SNAP["ثبت report_data_snapshots\n(شمارش included_document_count و pending_document_count)"]
+    SNAP --> CALC["محاسبه قطعی SQL/Engine:\n1) مبلغ خالص هر فاکتور فروش Posted + تعدیلات\n2) کسر payment_allocations ACTIVE (و برگشت از فروش)\n3) تفکیک چک‌های IN_HAND به عنوان مطالبات در جریان وصول\n4) محاسبه days_past_due = as_of_date - due_date"]
+    CALC --> BUCKET["طبقه‌بندی در سبدهای سنی و محاسبه رتبه ریسک اعتباری"]
+    BUCKET --> PERSIST["ثبت report_executions, report_versions,\nreport_metrics و report_evidences"]
+    PERSIST --> EXPORT["تولید خروجی JSON + Excel چندشیته + PDF فارسی"]
+    EXPORT --> NBA["پیشنهاد اقدام بعدی:\nپیگیری مشتریان > 60 روز / ارسال یادآور / بررسی اسناد معلق"]

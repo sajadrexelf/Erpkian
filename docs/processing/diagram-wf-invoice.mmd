@@ -1,0 +1,17 @@
+stateDiagram-v2
+    [*] --> Draft: دریافت درخواست ثبت فاکتور (دستی / اکسل / OCR)
+    Draft --> CheckingReadiness: اعتبارسنجی دوره مالی، شعبه و واحد پول
+    CheckingReadiness --> AwaitingInput: کمبود اطلاعات (تاریخ، ارز، طرف‌حساب یا کالا)
+    AwaitingInput --> CheckingReadiness: تکمیل توسط کاربر یا ادغام Entity
+    CheckingReadiness --> Processing: اجرای قوانین ریاضی و تبدیل واحد سنجش (UoM)
+    Processing --> AwaitingReview: خطای ریاضی / اختلاف جمع / طرف‌حساب کاندید
+    AwaitingReview --> Processing: اصلاح و تایید انسانی (extraction_reviews)
+    Processing --> AwaitingApproval: نیاز به تایید دوامضایی (مبلغ > سقف یا دوره حساس)
+    AwaitingApproval --> Completed: تایید توسط مدیر مالی / حسابدار ارشد -> Posted + اثر انبار
+    AwaitingApproval --> Cancelled: رد درخواست توسط تاییدکننده -> Lifecycle Remaining Needs Review/Rejected
+    Processing --> Completed: تایید خودکار سیاست سازمان (زیر سقف) -> Posted
+    CheckingReadiness --> Failed: دوره مالی CLOSED یا نقض کنترل قطعی
+    AwaitingInput --> Cancelled: لغو توسط کاربر
+    Completed --> [*]
+    Failed --> [*]
+    Cancelled --> [*]

@@ -1,0 +1,17 @@
+flowchart TD
+    START(["شروع مغایرت‌گیری بانک (دوره مشخص + حساب بانکی)"]) --> PERM["بررسی مجوز reconciliation:run\nو دسترسی حساب بانکی در شعبه"]
+    PERM --> CHECKDATA{"آیا صورتحساب بانکی (bank_transactions)\nو پرداخت‌های دوره موجودند؟"}
+    CHECKDATA -->|"صورتحساب موجود نیست"| REQ["وضعیت: Awaiting Input\nدرخواست آپلود اکسل/صورتحساب بانک"]
+    REQ --> START
+    CHECKDATA -->|"داده آماده است"| RUN["ایجاد رکورد reconciliation_runs\nو خواندن reconciliation_rules فعال"]
+    RUN --> PASS1["گام ۱ (تطبیق قطعی - Exact Match):\nکد پیگیری یکسان + مبلغ دقیق + تاریخ با تلرانس 0"]
+    PASS1 --> PASS2["گام ۲ (تطبیق چک‌ها و شبا):\nشناسه صیاد/سریال چک CLEARED با مبلغ و سررسید"]
+    PASS2 --> PASS3["گام ۳ (تطبیق احتمالی - Probabilistic):\nمبلغ دقیق + اختلاف تاریخ <= date_tolerance_days\nیا مبلغ + کارمزد بانکی <= amount_tolerance_irr"]
+    PASS3 --> PASS4["گام ۴ (تطبیق گروهی 1 به چند / چند به 1):\nجمع چند POS یا پایا برابر یک واریز تجمیعی"]
+    PASS4 --> SPLIT{"تفکیک نتایج در\nreconciliation_matches و exceptions"}
+    SPLIT -->|"EXACT_CONFIRMED"| AUTO["تغییر وضعیت تراکنش به MATCHED\nبا ثبت منبع"]
+    SPLIT -->|"PROBABILISTIC_SUGGESTED"| PENDING["وضعیت: Awaiting Review\nتایید/رد حسابدار در UI"]
+    SPLIT -->|"بدون متناظر"| EXC["ایجاد reconciliation_exceptions\n(MISSING_BOOK_RECORD / MISSING_BANK_TX)"]
+    PENDING -->|"حسابدار تایید کرد"| CONFIRMED["MANUAL_CONFIRMED -> MATCHED"]
+    EXC -->|"ثبت سند جاافتاده یا کارمزد"| RESOLVE["بستن استثنا (RESOLVED) و اجرای مجدد"]
+    AUTO & CONFIRMED & RESOLVE --> REPORT["صدور گزارش مغایرت بانکی با Snapshot و شواهد"]

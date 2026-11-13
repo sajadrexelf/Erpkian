@@ -1,0 +1,11 @@
+flowchart LR
+    REQ(["درخواست تولید یا بازتولید گزارش"]) --> LOCK["بررسی دسترسی نقش + قفل Snapshot ورودی\nreport_data_snapshots (snapshot_hash)"]
+    LOCK --> PREV{"آیا اجرای قبلی برای همین\nreport_execution وجود دارد؟"}
+    PREV -->|"خیر"| V1["ایجاد report_versions\nversion_number = 1, is_latest = true"]
+    PREV -->|"بله (پس از تکمیل اسناد جدید)"| V2["ایجاد نسخه جدید (v2)\nsupersedes_report_version_id = v1\n(v1 دست‌نخورده باقی می‌ماند)"]
+    V1 & V2 --> METRICS["محاسبه قطعی شاخص‌ها\nدر report_metrics (NUMERIC 20,4 + formula_code)"]
+    METRICS --> EVIDENCE["نگاشت هر شاخص به رکوردهای مالی و اسناد\nدر report_evidences (invoice_id, document_id, contribution_irr)"]
+    EVIDENCE --> WARN["درج هشدارهای نقص داده و اسناد معلق\nاز processing_warnings در بدنه گزارش"]
+    WARN --> RENDER["تولید فایل‌های خروجی توسط Export Worker:\nJSON Canonical + PDF فارسی + Excel چندشیته + CSV"]
+    RENDER --> STORE["ذخیره فایل‌ها در S3 (document_storage_objects)\nو ثبت در report_outputs"]
+    STORE --> DELIVER["تحویل لینک امن کوتاه‌عمر + خلاصه توضیحی دستیار هوشمند"]
