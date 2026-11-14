@@ -1,1 +1,18 @@
 @import "tailwindcss";
+
+@layer base {
+  :root {
+    font-family: "Vazirmatn", "Noto Sans Arabic", "Noto Kufi Arabic", "Tahoma", system-ui, -apple-system, sans-serif;
+    font-feature-settings: "tnum" on, "lnum" on;
+  }
+
+  body {
+    direction: rtl;
+    text-align: right;
+  }
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}

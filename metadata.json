@@ -1,6 +1,6 @@
 {
-  "name": "",
-  "description": "",
+  "name": "Erpkian — پلتفرم هوشمند حسابداری و هوش اسناد",
+  "description": "پلتفرم حسابداری، دریافت و استخراج اسناد، اعتبارسنجی قطعی مالی، گزارش سنی مطالبات و دستیار ارکستراتور ویژه شرکت‌های پخش و کسب‌وکارهای ایرانی",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
